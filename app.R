@@ -9,38 +9,36 @@
 
 library(shiny)
 
-# Define UI for application that draws a histogram
-ui <- fluidPage(# Application title
-    titlePanel("Old Faithful Geyser Data"),
-    
-    # Sidebar with a slider input for number of bins
-    sidebarLayout(sidebarPanel(
-        sliderInput(
-            "bins",
-            "Number of bins:",
-            min = 1,
-            max = 50,
-            value = 30
-        )
-    ),
-    
-    # Show a plot of the generated distribution
-    mainPanel(plotOutput("distPlot"))))
+# Define UI ----
+ui <- fluidPage(
+  titlePanel("Somatic mutations in TCGA"),
 
-# Define server logic required to draw a histogram
+  # Sidebar on left and main panel on right ----
+  sidebarLayout(
+    # User inputs ----
+    sidebarPanel(
+      selectInput(
+        "geneQuery",
+        "Select a gene",
+        c("KRAS", "TP53"),
+      )
+    ),
+
+    # Space for plots to be rendered ----
+    mainPanel(
+      textOutput("textOfGeneQuery")
+    ),
+  )
+)
+
+# Define server logic required ----
 server <- function(input, output) {
-    output$distPlot <- renderPlot({
-        # generate bins based on input$bins from ui.R
-        x    <- faithful[, 2]
-        bins <- seq(min(x), max(x), length.out = input$bins + 1)
-        
-        # draw the histogram with the specified number of bins
-        hist(x,
-             breaks = bins,
-             col = 'darkgray',
-             border = 'white')
-    })
+
+  # Render text based on the user input ----
+  output$textOfGeneQuery <- renderText({
+    sprintf("You selected %s", input$geneQuery)
+  })
 }
 
-# Run the application
+# Run the application ----
 shinyApp(ui = ui, server = server)
