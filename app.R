@@ -1,54 +1,112 @@
-#
-# This is a Shiny web application. You can run the application by clicking
-# the 'Run App' button above.
-#
-# Find out more about building applications with Shiny here:
-#
-#    http://shiny.rstudio.com/
-#
+# Shiny app that displays information about cars.
+# Uses the API from the National Highway Traffic Safety Administration (NHTSA).
 
-# How to show interactive 3d graphics using webgl:
-# https://stackoverflow.com/q/44100268/5666087
-
-library(rgl)
 library(shiny)
 
 # Define UI ----
-ui <- fluidPage(
-  titlePanel("Somatic mutations in TCGA"),
+ui <- {
+  fluidPage(
+    titlePanel("What are people saying about your car?"),
 
-  # Sidebar on left and main panel on right ----
-  sidebarLayout(
-    # User inputs ----
-    sidebarPanel(
-      selectInput(
-        "geneQuery",
-        "Select a gene",
-        c("KRAS", "TP53"),
+    # Sidebar on left and main panel on right ----
+    sidebarLayout(
+      # User inputs ----
+      sidebarPanel(
+        selectInput(
+          inputId = "vehicleYear",
+          label = "Select a model year",
+          choices = 1995:2023,
+          selected = 2021
+        ),
+        radioButtons(
+          inputId = "vehicleType",
+          label = "Select a vehicle type",
+          choices = c("Passenger Car", "Truck"),
+          selected = "Passenger Car",
+        ),
+        selectizeInput(
+          inputId = "vehicleMake",
+          label = "Select a make (supports text search)",
+          choices = NULL,
+        ),
+        selectizeInput(
+          inputId = "vehicleModel",
+          label = "Select a model",
+          choices = NULL,
+        ),
       ),
-      sliderInput("numSamples", label = "n samples", min = 10, max = 100, value = 10, step = 10),
-    ),
 
-    # Space for plots to be rendered ----
-    mainPanel(
-      textOutput("textOfGeneQuery"),
-      rglwidgetOutput("plot3d", width = 800, height = 600),
-    ),
+      # Space for data to be rendered ----
+      mainPanel(textOutput("vehicleInfo")),
+    )
   )
-)
+}
 
-# Define server logic required ----
-server <- function(input, output) {
-  # Render text based on the user input ----
-  output$textOfGeneQuery <- renderText({
-    sprintf("You selected %s", input$geneQuery)
+# Get vehicle makes ----
+# Column names are make_id and make_name.
+# TODO: can we run this outside of server and client?
+vehicleMakes <-
+  read.csv("https://vpic.nhtsa.dot.gov/api/vehicles/GetAllMakes?format=csv")
+
+# Define server logic ----
+server <- function(input, output, session) {
+
+  # See https://shiny.rstudio.com/articles/selectize.html#server-side-selectize
+  # We set the choices here to improve performance.
+  updateSelectizeInput(
+    session = session,
+    inputId = "vehicleMake",
+    choices = sort(vehicleMakes$make_name),
+    selected = "BMW",
+    server = TRUE
+  )
+
+
+  # Update choices for vehicle make based on selected vehicle model. ----
+  observe({
+    year <- input$vehicleYear
+    make <- input$vehicleMake
+    type <- input$vehicleType
+
+    # Do not make an API request unless we ha)ve selected a make...
+    if (make %in% vehicleMakes$make_name) {
+      vehicleModels <- {
+        url <- sprintf(
+          "https://vpic.nhtsa.dot.gov/api/vehicles/GetModelsForMake/%s?format=csv",
+          make
+        )
+        url <-
+          sprintf(
+            "https://vpic.nhtsa.dot.gov/api/vehicles/GetModelsForMakeYear/make/%s/modelyear/%s/vehicletype/%s?format=csv",
+            make,
+            year,
+            type
+          )
+        url <- URLencode(url)
+        # TODO: add try-catch here to account for possible errors in request.
+        read.csv(url)
+      }
+      # TODO: make the choices a named list, where names are model names and
+      # values are the ID of that model. This will allow us to plug in directly
+      # to the car safety API (and perhaps recall and complaints APIs).
+      updateSelectizeInput(
+        session = session,
+        inputId = "vehicleModel",
+        choices = sort(vehicleModels$model_name)
+      )
+    }
   })
 
-  output$plot3d <- renderRglwidget({
-    n <- input$numSamples
-    try(close3d())
-    plot3d(rnorm(n), rnorm(n), rnorm(n))
-    rglwidget()
+  # Render text based on the user input ----
+  output$vehicleInfo <- renderText({
+    if (input$vehicleYear != "" & input$vehicleMake != "" & input$vehicleModel != "") {
+      sprintf(
+        "%s %s %s",
+        input$vehicleYear,
+        input$vehicleMake,
+        input$vehicleModel
+      )
+    }
   })
 }
 
