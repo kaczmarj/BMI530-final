@@ -16,7 +16,7 @@ ui <- {
           inputId = "vehicleYear",
           label = "Select a model year",
           choices = 1995:2023,
-          selected = 2021
+          selected = 2019
         ),
         radioButtons(
           inputId = "vehicleType",
@@ -37,7 +37,11 @@ ui <- {
       ),
 
       # Space for data to be rendered ----
-      mainPanel(textOutput("vehicleInfo")),
+      mainPanel(
+        textOutput("vehicleInfo"),
+        textOutput("vehicleRatingOverall"),
+        htmlOutput("vehicleImage"),
+      ),
     )
   )
 }
@@ -48,6 +52,8 @@ ui <- {
 vehicleMakes <-
   read.csv("https://vpic.nhtsa.dot.gov/api/vehicles/GetAllMakes?format=csv")
 
+vehicleModels <- NULL
+
 # Define server logic ----
 server <- function(input, output, session) {
 
@@ -57,9 +63,10 @@ server <- function(input, output, session) {
     session = session,
     inputId = "vehicleMake",
     choices = sort(vehicleMakes$make_name),
-    selected = "BMW",
+    selected = "VOLKSWAGEN",
     server = TRUE
   )
+
 
 
   # Update choices for vehicle make based on selected vehicle model. ----
@@ -68,9 +75,10 @@ server <- function(input, output, session) {
     make <- input$vehicleMake
     type <- input$vehicleType
 
-    # Do not make an API request unless we ha)ve selected a make...
+    # Do not make an API request unless we have selected a make...
     if (make %in% vehicleMakes$make_name) {
-      vehicleModels <- {
+      # Note the <<- operator, so we update the variable in the parent scope.
+      vehicleModels <<- {
         url <- sprintf(
           "https://vpic.nhtsa.dot.gov/api/vehicles/GetModelsForMake/%s?format=csv",
           make
@@ -96,10 +104,14 @@ server <- function(input, output, session) {
       )
     }
   })
-
-  # Render text based on the user input ----
   output$vehicleInfo <- renderText({
-    if (input$vehicleYear != "" & input$vehicleMake != "" & input$vehicleModel != "") {
+    allSelected <- all(
+      input$vehicleYear != "", input$vehicleMake != "",
+      input$vehicleModel != "", !is.null(vehicleModels)
+    )
+    if (allSelected) {
+
+      # Render text based on the user input ----
       sprintf(
         "%s %s %s",
         input$vehicleYear,
@@ -107,6 +119,45 @@ server <- function(input, output, session) {
         input$vehicleModel
       )
     }
+  })
+
+  observe({
+    year <- input$vehicleYear
+    make <- input$vehicleMake
+    model <- input$vehicleModel
+
+    url <- sprintf("https://api.nhtsa.gov/SafetyRatings/modelyear/%s/make/%s/model/%s", year, make, model)
+    url <- URLencode(url)
+    allSelected <- all(
+      year != "", make != "",
+      model != "", !is.null(vehicleModels)
+    )
+    if (allSelected) {
+      results <- jsonlite::fromJSON(url)$Results
+      if (!is.null(results) && length(results) == 0) {
+        # what do?
+      } else {
+        # Has names VehicleDescription and VehicleId
+        vehicleInfo <- results[1, ]
+        vehicleId <- vehicleInfo$VehicleId
+
+        # Get safety information...
+        url <- sprintf("https://api.nhtsa.gov/SafetyRatings/VehicleId/%s", vehicleId)
+        url <- URLencode(url)
+        vehicleSafety <- jsonlite::fromJSON(url)$Results[1]
+
+        output$vehicleRatingOverall <- renderText({
+          sprintf("Overall%s / 5", vehicleSafety$OverallRating)
+        })
+
+        output$vehicleImage <- renderText({
+          c(sprintf('<img src="%s">', vehicleSafety$VehiclePicture))
+        })
+      }
+    }
+
+    # vehicleModelNameToId <- split(vehicleModels$model_id, vehicleModels$model_name)
+    # vehicleModelId <- vehicleModelNameToId[input$vehicleModel]
   })
 }
 
