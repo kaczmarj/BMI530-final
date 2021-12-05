@@ -37,12 +37,18 @@ ui <- {
           label = "Select a model",
           choices = NULL,
         ),
+        selectizeInput(
+          inputId = "vehicleVariantID",
+          label = "Select a variant",
+          choices = NULL,
+        ),
       ),
 
       # Space for data to be rendered ----
       mainPanel(
         fluidRow(textOutput("vehicleInfo")),
         fluidRow(textOutput("vehicleRatingOverall")),
+        fluidRow(tableOutput("vehicleSafetyTable")),
         fluidRow(htmlOutput("vehicleImage")),
       ),
     )
@@ -55,12 +61,14 @@ ui <- {
 vehicleMakes <-
   read.csv("https://vpic.nhtsa.dot.gov/api/vehicles/GetAllMakes?format=csv")
 
+# We make these objects global for easier debugging.
 vehicleModels <- NULL
 vehicleTypes <- NULL
+vehicleDescriptionsAndIDs <- NULL
+vehicleSafety <- NULL
 
 # Define server logic ----
 server <- function(input, output, session) {
-
   # See https://shiny.rstudio.com/articles/selectize.html#server-side-selectize
   # We set the choices here to improve performance.
   updateSelectizeInput(
@@ -78,7 +86,11 @@ server <- function(input, output, session) {
     # Do not make an API request unless we have selected a make...
     if (make %in% vehicleMakes$make_name) {
       vehicleTypes <<- {
-        url <- sprintf("https://vpic.nhtsa.dot.gov/api/vehicles/GetVehicleTypesForMake/%s?format=csv", make)
+        url <-
+          sprintf(
+            "https://vpic.nhtsa.dot.gov/api/vehicles/GetVehicleTypesForMake/%s?format=csv",
+            make
+          )
         url <- URLencode(url)
         # TODO: add try-catch here to account for possible errors in request.
         read.csv(url)
@@ -123,7 +135,8 @@ server <- function(input, output, session) {
   })
   output$vehicleInfo <- renderText({
     allSelected <- all(
-      input$vehicleYear != "", input$vehicleMake != "",
+      input$vehicleYear != "",
+      input$vehicleMake != "",
       input$vehicleModel != "", !is.null(vehicleModels)
     )
     if (allSelected) {
@@ -142,7 +155,13 @@ server <- function(input, output, session) {
     make <- input$vehicleMake
     model <- input$vehicleModel
 
-    url <- sprintf("https://api.nhtsa.gov/SafetyRatings/modelyear/%s/make/%s/model/%s", year, make, model)
+    url <-
+      sprintf(
+        "https://api.nhtsa.gov/SafetyRatings/modelyear/%s/make/%s/model/%s",
+        year,
+        make,
+        model
+      )
     url <- URLencode(url)
     allSelected <- all(
       year != "", make != "",
@@ -153,28 +172,72 @@ server <- function(input, output, session) {
       # Reset image.
       output$vehicleImage <- renderText("Photo unavailable")
 
-      results <- jsonlite::fromJSON(url)$Results
-      if (!is.null(results) && length(results) == 0) {
+      vehicleDescriptionsAndIDs <<- jsonlite::fromJSON(url)$Results
+      if (!is.null(vehicleDescriptionsAndIDs) &&
+        length(vehicleDescriptionsAndIDs) == 0) {
         # what do?
       } else {
-        # Has names VehicleDescription and VehicleId
-        vehicleInfo <- results[1, ]
-        vehicleId <- vehicleInfo$VehicleId
-
-        # Get safety information...
-        url <- sprintf("https://api.nhtsa.gov/SafetyRatings/VehicleId/%s", vehicleId)
-        url <- URLencode(url)
-        vehicleSafety <- jsonlite::fromJSON(url)$Results[1]
-
-        output$vehicleRatingOverall <- renderText({
-          sprintf("Overall%s / 5", vehicleSafety$OverallRating)
-        })
-
-        output$vehicleImage <- renderText({
-          c(sprintf('<img src="%s">', vehicleSafety$VehiclePicture))
-        })
+        updateSelectizeInput(
+          session = session,
+          inputId = "vehicleVariantID",
+          choices = split(
+            vehicleDescriptionsAndIDs$VehicleId,
+            vehicleDescriptionsAndIDs$VehicleDescription
+          )
+        )
       }
     }
+  })
+
+  # Get safety information using the vehicle ID
+  observe({
+    vehicleId <- input$vehicleVariantID
+
+    # Get safety information...
+    url <-
+      sprintf(
+        "https://api.nhtsa.gov/SafetyRatings/VehicleId/%s",
+        vehicleId
+      )
+    url <- URLencode(url)
+    vehicleSafety <<- jsonlite::fromJSON(url)$Results
+
+    output$vehicleRatingOverall <- renderText({
+      sprintf("Overall%s / 5", vehicleSafety$OverallRating)
+    })
+
+    crashNames <- c(
+      "OverallRating",
+      "OverallFrontCrashRating",
+      "FrontCrashDriversideRating",
+      "FrontCrashPassengersideRating",
+      "OverallSideCrashRating",
+      "SideCrashDriversideRating",
+      "SideCrashPassengersideRating",
+      "RolloverRating",
+      "RolloverRating2",
+      "RolloverPossibility",
+      "RolloverPossibility2",
+      "SidePoleCrashRating",
+    )
+
+    assistNames <-
+      c(
+        "NHTSAElectronicStabilityControl",
+        "NHTSAForwardCollisionWarning",
+        "NHTSALaneDepartureWarning"
+      )
+
+    badThings <-
+      c("ComplaintsCount", "RecallsCount", "InvestigationCount")
+
+    # TODO: show three tables (crash, assist, bad). Melt the tables first so
+    # each column name becomes a row. This will make it easier.
+    output$vehicleSafetyTable <- renderTable(vehicleSafety)
+
+    output$vehicleImage <- renderText({
+      c(sprintf('<img src="%s">', vehicleSafety$VehiclePicture))
+    })
   })
 }
 
