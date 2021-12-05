@@ -1,6 +1,10 @@
 # Shiny app that displays information about cars.
 # Uses the API from the National Highway Traffic Safety Administration (NHTSA).
 
+# Writeup, demo, github url.
+
+# todo: make the select for make above, then vehicle type will be reactive.
+
 library(shiny)
 
 # Define UI ----
@@ -18,16 +22,15 @@ ui <- {
           choices = 1995:2023,
           selected = 2019
         ),
-        radioButtons(
-          inputId = "vehicleType",
-          label = "Select a vehicle type",
-          choices = c("Passenger Car", "Truck"),
-          selected = "Passenger Car",
-        ),
         selectizeInput(
           inputId = "vehicleMake",
           label = "Select a make (supports text search)",
           choices = NULL,
+        ),
+        radioButtons(
+          inputId = "vehicleType",
+          label = "Select a vehicle type",
+          choices = c("Please wait"),
         ),
         selectizeInput(
           inputId = "vehicleModel",
@@ -38,9 +41,9 @@ ui <- {
 
       # Space for data to be rendered ----
       mainPanel(
-        textOutput("vehicleInfo"),
-        textOutput("vehicleRatingOverall"),
-        htmlOutput("vehicleImage"),
+        fluidRow(textOutput("vehicleInfo")),
+        fluidRow(textOutput("vehicleRatingOverall")),
+        fluidRow(htmlOutput("vehicleImage")),
       ),
     )
   )
@@ -53,6 +56,7 @@ vehicleMakes <-
   read.csv("https://vpic.nhtsa.dot.gov/api/vehicles/GetAllMakes?format=csv")
 
 vehicleModels <- NULL
+vehicleTypes <- NULL
 
 # Define server logic ----
 server <- function(input, output, session) {
@@ -67,6 +71,26 @@ server <- function(input, output, session) {
     server = TRUE
   )
 
+  # Fill in the vehicle type options. ----
+  observe({
+    make <- input$vehicleMake
+
+    # Do not make an API request unless we have selected a make...
+    if (make %in% vehicleMakes$make_name) {
+      vehicleTypes <<- {
+        url <- sprintf("https://vpic.nhtsa.dot.gov/api/vehicles/GetVehicleTypesForMake/%s?format=csv", make)
+        url <- URLencode(url)
+        # TODO: add try-catch here to account for possible errors in request.
+        read.csv(url)
+      }
+      updateRadioButtons(
+        session = session,
+        inputId = "vehicleType",
+        # We need to trim whitespace because some names come with whitespace.
+        choices = sort(trimws(vehicleTypes$vehicletypename))
+      )
+    }
+  })
 
 
   # Update choices for vehicle make based on selected vehicle model. ----
@@ -79,10 +103,6 @@ server <- function(input, output, session) {
     if (make %in% vehicleMakes$make_name) {
       # Note the <<- operator, so we update the variable in the parent scope.
       vehicleModels <<- {
-        url <- sprintf(
-          "https://vpic.nhtsa.dot.gov/api/vehicles/GetModelsForMake/%s?format=csv",
-          make
-        )
         url <-
           sprintf(
             "https://vpic.nhtsa.dot.gov/api/vehicles/GetModelsForMakeYear/make/%s/modelyear/%s/vehicletype/%s?format=csv",
@@ -94,9 +114,6 @@ server <- function(input, output, session) {
         # TODO: add try-catch here to account for possible errors in request.
         read.csv(url)
       }
-      # TODO: make the choices a named list, where names are model names and
-      # values are the ID of that model. This will allow us to plug in directly
-      # to the car safety API (and perhaps recall and complaints APIs).
       updateSelectizeInput(
         session = session,
         inputId = "vehicleModel",
@@ -110,7 +127,6 @@ server <- function(input, output, session) {
       input$vehicleModel != "", !is.null(vehicleModels)
     )
     if (allSelected) {
-
       # Render text based on the user input ----
       sprintf(
         "%s %s %s",
@@ -132,7 +148,11 @@ server <- function(input, output, session) {
       year != "", make != "",
       model != "", !is.null(vehicleModels)
     )
+
     if (allSelected) {
+      # Reset image.
+      output$vehicleImage <- renderText("Photo unavailable")
+
       results <- jsonlite::fromJSON(url)$Results
       if (!is.null(results) && length(results) == 0) {
         # what do?
@@ -155,9 +175,6 @@ server <- function(input, output, session) {
         })
       }
     }
-
-    # vehicleModelNameToId <- split(vehicleModels$model_id, vehicleModels$model_name)
-    # vehicleModelId <- vehicleModelNameToId[input$vehicleModel]
   })
 }
 
