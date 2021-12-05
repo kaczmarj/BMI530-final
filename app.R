@@ -5,7 +5,10 @@
 
 # todo: make the select for make above, then vehicle type will be reactive.
 
+library(curl)  # for downloading things in jsonlite::fromJSON
+library(jsonlite)
 library(shiny)
+library(tidyr)
 
 # Define UI ----
 ui <- {
@@ -48,7 +51,9 @@ ui <- {
       mainPanel(
         fluidRow(textOutput("vehicleInfo")),
         fluidRow(textOutput("vehicleRatingOverall")),
-        fluidRow(tableOutput("vehicleSafetyTable")),
+        fluidRow(tableOutput("vehicleCrashTable")),
+        fluidRow(tableOutput("vehicleAssistTable")),
+        fluidRow(tableOutput("vehicleRecallTable")),
         fluidRow(htmlOutput("vehicleImage")),
       ),
     )
@@ -218,7 +223,7 @@ server <- function(input, output, session) {
       "RolloverRating2",
       "RolloverPossibility",
       "RolloverPossibility2",
-      "SidePoleCrashRating",
+      "SidePoleCrashRating"
     )
 
     assistNames <-
@@ -228,12 +233,14 @@ server <- function(input, output, session) {
         "NHTSALaneDepartureWarning"
       )
 
-    badThings <-
+    recallNames <-
       c("ComplaintsCount", "RecallsCount", "InvestigationCount")
 
     # TODO: show three tables (crash, assist, bad). Melt the tables first so
     # each column name becomes a row. This will make it easier.
-    output$vehicleSafetyTable <- renderTable(vehicleSafety)
+    output$vehicleCrashTable <- renderTable({
+      vehicleSafety[,crashNames]
+    })
 
     output$vehicleImage <- renderText({
       c(sprintf('<img src="%s">', vehicleSafety$VehiclePicture))
