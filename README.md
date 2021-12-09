@@ -5,6 +5,8 @@ https://kaczmarj.shinyapps.io/car-safety/
 An R Shiny app that displays safety information about cars. Data provided by
 NHTSA.gov.
 
+![Screenshot of web app](screenshot.jpg)
+
 # Install
 
 This app was written using R version 4.0.5 "Shake and Throw" and the following dependencies:
