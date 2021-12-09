@@ -77,7 +77,7 @@ ui <- {
       12,
       align = "center",
       tags$a(
-        href = "https://github.com/kaczmarj/bmi530-final",
+        href = "https://github.com/kaczmarj/car-safety-shiny",
         target = "_blank",
         rel = "noopener",
         "View source",
@@ -85,7 +85,7 @@ ui <- {
       ),
       "|",
       tags$a(
-        href = "https://github.com/kaczmarj/bmi530-final/issues/new",
+        href = "https://github.com/kaczmarj/car-safety-shiny/issues/new",
         "Report a problem",
         target = "_blank",
         rel = "noopener"
