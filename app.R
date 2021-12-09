@@ -8,7 +8,6 @@
 library(curl) # for downloading things in jsonlite::fromJSON
 library(jsonlite)
 library(shiny)
-library(tidyr)
 
 # Define UI ----
 ui <- {
