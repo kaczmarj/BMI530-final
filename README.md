@@ -19,7 +19,7 @@ Build and run the Docker image:
 
 ```
 docker build -t car-safety .
-docker run --rm -it car-safety
+docker run --rm -it -p 3838:3838 car-safety
 ```
 
 And navigate to http://localhost:3838/.
