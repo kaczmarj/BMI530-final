@@ -1,3 +1,6 @@
-# BMI530 final project
+# Car safety web app
 
-R Shiny app for visualization of vehicle information.
+https://kaczmarj.shinyapps.io/car-safety/
+
+An R Shiny app that displays safety information about cars. Data provided by
+NHTSA.gov.
