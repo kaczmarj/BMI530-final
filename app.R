@@ -13,7 +13,7 @@ library(tidyr)
 # Define UI ----
 ui <- {
   fluidPage(
-    titlePanel("What are people saying about your car?"),
+    titlePanel("How safe is your car? Find out using public data from NHTSA.gov"),
 
     # Sidebar on left and main panel on right ----
     sidebarLayout(
@@ -45,14 +45,22 @@ ui <- {
           label = "Select a variant",
           choices = NULL,
         ),
+        # This is out of 12.
+        width = 4
       ),
 
       # Space for data to be rendered ----
       mainPanel(
         fluidRow(textOutput("vehicleInfo")),
-        fluidRow(tableOutput("vehicleCrashTable")),
-        fluidRow(tableOutput("vehicleAssistTable")),
-        fluidRow(tableOutput("vehicleRecallTable")),
+        fluidRow(
+          column(6, tableOutput(
+            "vehicleCrashTable"
+          )),
+          fluidRow(
+            column(6, tableOutput("vehicleAssistTable")),
+            column(6, tableOutput("vehicleRecallTable")),
+          ),
+        ),
         fluidRow(htmlOutput("vehicleImage")),
       ),
     )
