@@ -50,20 +50,48 @@ ui <- {
       ),
 
       # Space for data to be rendered ----
-      mainPanel(
+      mainPanel(fluidRow(column(
+        12,
         fluidRow(textOutput("vehicleInfo")),
         fluidRow(
-          column(6, tableOutput(
+          column(4, tableOutput(
             "vehicleCrashTable"
           )),
-          fluidRow(
-            column(6, tableOutput("vehicleAssistTable")),
-            column(6, tableOutput("vehicleRecallTable")),
-          ),
-        ),
-        fluidRow(htmlOutput("vehicleImage")),
+          column(
+            8,
+            fluidRow(
+              column(6, tableOutput(
+                "vehicleAssistTable"
+              )),
+              column(6, tableOutput(
+                "vehicleRecallTable"
+              )),
+            ),
+            fluidRow(htmlOutput("vehicleImage")),
+          )
+        )
+      )), )
+    ),
+    hr(),
+    # htmlOutput("foo", '<i class="fa fa-github"></i>')
+    fluidRow(column(
+      12,
+      align = "center",
+      tags$a(
+        href = "https://github.com/kaczmarj/bmi530-final",
+        target = "_blank",
+        rel = "noopener",
+        "View source",
+        icon("fab fa-github")
       ),
-    )
+      "|",
+      tags$a(
+        href = "https://github.com/kaczmarj/bmi530-final/issues/new",
+        "Report a problem",
+        target = "_blank",
+        rel = "noopener"
+      ),
+    )),
   )
 }
 
@@ -107,11 +135,20 @@ server <- function(input, output, session) {
         # TODO: add try-catch here to account for possible errors in request.
         read.csv(url)
       }
+      vehicleTypeChoices <-
+        sort(trimws(vehicleTypes$vehicletypename))
+      selected <-
+        if ("Passenger Car" %in% vehicleTypeChoices) {
+          "Passenger Car"
+        } else {
+          NULL
+        }
       updateRadioButtons(
         session = session,
         inputId = "vehicleType",
         # We need to trim whitespace because some names come with whitespace.
-        choices = sort(trimws(vehicleTypes$vehicletypename))
+        choices = vehicleTypeChoices,
+        selected = selected
       )
     }
   })
@@ -252,19 +289,19 @@ server <- function(input, output, session) {
     output$vehicleCrashTable <- renderTable({
       # Transpose the dataframe so column names become row values.
       df <- as.data.frame(t(vehicleSafety[, crashNames]))
-      cbind(Category = rownames(df), Value = df[, 1])
+      cbind("Crash test" = rownames(df), Value = df[, 1])
     })
 
     output$vehicleAssistTable <- renderTable({
       # Transpose the dataframe so column names become row values.
       df <- as.data.frame(t(vehicleSafety[, assistNames]))
-      cbind(Category = rownames(df), Value = df[, 1])
+      cbind("Assist system" = rownames(df), Value = df[, 1])
     })
 
     output$vehicleRecallTable <- renderTable({
       # Transpose the dataframe so column names become row values.
       df <- as.data.frame(t(vehicleSafety[, recallNames]))
-      cbind(Category = rownames(df), Value = df[, 1])
+      cbind("Bad news" = rownames(df), Value = df[, 1])
     })
 
     output$vehicleImage <- renderText({
