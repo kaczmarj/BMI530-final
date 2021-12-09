@@ -73,7 +73,6 @@ ui <- {
       )), )
     ),
     hr(),
-    # htmlOutput("foo", '<i class="fa fa-github"></i>')
     fluidRow(column(
       12,
       align = "center",
@@ -221,6 +220,8 @@ server <- function(input, output, session) {
     if (allSelected) {
       # Reset image.
       output$vehicleImage <- renderText("Photo unavailable")
+
+      # TODO: should we reset the tables here too?
 
       vehicleDescriptionsAndIDs <<- jsonlite::fromJSON(url)$Results
       if (!is.null(vehicleDescriptionsAndIDs) &&
