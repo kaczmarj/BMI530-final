@@ -5,7 +5,7 @@
 
 # todo: make the select for make above, then vehicle type will be reactive.
 
-library(curl)  # for downloading things in jsonlite::fromJSON
+library(curl) # for downloading things in jsonlite::fromJSON
 library(jsonlite)
 library(shiny)
 library(tidyr)
@@ -50,7 +50,6 @@ ui <- {
       # Space for data to be rendered ----
       mainPanel(
         fluidRow(textOutput("vehicleInfo")),
-        fluidRow(textOutput("vehicleRatingOverall")),
         fluidRow(tableOutput("vehicleCrashTable")),
         fluidRow(tableOutput("vehicleAssistTable")),
         fluidRow(tableOutput("vehicleRecallTable")),
@@ -142,7 +141,8 @@ server <- function(input, output, session) {
     allSelected <- all(
       input$vehicleYear != "",
       input$vehicleMake != "",
-      input$vehicleModel != "", !is.null(vehicleModels)
+      input$vehicleModel != "",
+      !is.null(vehicleModels)
     )
     if (allSelected) {
       # Render text based on the user input ----
@@ -194,9 +194,14 @@ server <- function(input, output, session) {
     }
   })
 
-  # Get safety information using the vehicle ID
+  # Get safety information using the vehicle ID ----
   observe({
+    # A number (actually a string in this case) that is unique to each car.
     vehicleId <- input$vehicleVariantID
+
+    if (vehicleId == "") {
+      return()
+    }
 
     # Get safety information...
     url <-
@@ -205,11 +210,9 @@ server <- function(input, output, session) {
         vehicleId
       )
     url <- URLencode(url)
+    # For debugging: https://api.nhtsa.gov/SafetyRatings/VehicleId/13679
+    # url above is for 2019 golf gti
     vehicleSafety <<- jsonlite::fromJSON(url)$Results
-
-    output$vehicleRatingOverall <- renderText({
-      sprintf("Overall%s / 5", vehicleSafety$OverallRating)
-    })
 
     crashNames <- c(
       "OverallRating",
@@ -239,11 +242,28 @@ server <- function(input, output, session) {
     # TODO: show three tables (crash, assist, bad). Melt the tables first so
     # each column name becomes a row. This will make it easier.
     output$vehicleCrashTable <- renderTable({
-      vehicleSafety[,crashNames]
+      # Transpose the dataframe so column names become row values.
+      df <- as.data.frame(t(vehicleSafety[, crashNames]))
+      cbind(Category = rownames(df), Value = df[, 1])
+    })
+
+    output$vehicleAssistTable <- renderTable({
+      # Transpose the dataframe so column names become row values.
+      df <- as.data.frame(t(vehicleSafety[, assistNames]))
+      cbind(Category = rownames(df), Value = df[, 1])
+    })
+
+    output$vehicleRecallTable <- renderTable({
+      # Transpose the dataframe so column names become row values.
+      df <- as.data.frame(t(vehicleSafety[, recallNames]))
+      cbind(Category = rownames(df), Value = df[, 1])
     })
 
     output$vehicleImage <- renderText({
-      c(sprintf('<img src="%s">', vehicleSafety$VehiclePicture))
+      c(sprintf(
+        '<img src="%s" width="500px">',
+        vehicleSafety$VehiclePicture
+      ))
     })
   })
 }
