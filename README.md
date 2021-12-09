@@ -46,7 +46,7 @@ The bulk of this app involves getting the unique ID of the vehicle a user is int
 
 ## Where displayed data comes from
 
-All of the data displayed on the right-hand side of the web app comes from an API call to https://api.nhtsa.gov/SafetyRatings/VehicleId/{ID}. This returns a JSON object of safety information. Below is the data for the [2019 Volswagen Golf](https://api.nhtsa.gov/SafetyRatings/VehicleId/13679).
+All of the data displayed on the right-hand side of the web app comes from an API call to https://api.nhtsa.gov/SafetyRatings/VehicleId/{ID}. This returns a JSON object of safety information. Below is the data for the [2019 Volkswagen Golf](https://api.nhtsa.gov/SafetyRatings/VehicleId/13679).
 
 ```json
 {
