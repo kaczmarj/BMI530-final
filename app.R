@@ -1,9 +1,5 @@
-# Shiny app that displays information about cars.
+# Shiny app that displays safety information about cars.
 # Uses the API from the National Highway Traffic Safety Administration (NHTSA).
-
-# Writeup, demo, github url.
-
-# todo: make the select for make above, then vehicle type will be reactive.
 
 library(curl) # for downloading things in jsonlite::fromJSON
 library(jsonlite)
@@ -256,7 +252,7 @@ server <- function(input, output, session) {
       )
     url <- URLencode(url)
     # For debugging: https://api.nhtsa.gov/SafetyRatings/VehicleId/13679
-    # url above is for 2019 golf gti
+    # url above is for 2019 golf
     vehicleSafety <<- jsonlite::fromJSON(url)$Results
 
     crashNames <- c(
@@ -284,8 +280,6 @@ server <- function(input, output, session) {
     recallNames <-
       c("ComplaintsCount", "RecallsCount", "InvestigationCount")
 
-    # TODO: show three tables (crash, assist, bad). Melt the tables first so
-    # each column name becomes a row. This will make it easier.
     output$vehicleCrashTable <- renderTable({
       # Transpose the dataframe so column names become row values.
       df <- as.data.frame(t(vehicleSafety[, crashNames]))
