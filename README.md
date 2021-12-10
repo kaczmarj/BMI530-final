@@ -33,15 +33,61 @@ And navigate to http://localhost:3838/.
 The bulk of this app involves getting the unique ID of the vehicle a user is interested in. This involves a sequence of steps.
 
 1. We need to get a list of all of the possible vehicle makes (e.g., Volkswagen, Honda, Jeep, etc.).
-    - https://vpic.nhtsa.dot.gov/api/vehicles/GetAllMakes
-1. Later NHTSA API calls require a vehicle type (e.g., passenger car, truck, etc.). NHTSA can give us a list of all of the vehicle types a particular make includes.
-    - https://vpic.nhtsa.dot.gov/api/vehicles/GetVehicleTypesForMake/{make}
-    - We assume that most people will be interested in passenger cars, so if the make includes passenger cars, we pre-select that option.
-1. We can get all of the possible vehicle models given a make, vehicle type, and year.
+    - https://vpic.nhtsa.dot.gov/api/vehicles/GetAllMakes?format=csv
+
+      ```
+      make_id,make_name
+      440,ASTON MARTIN
+      441,TESLA
+      442,JAGUAR
+      443,MASERATI
+      ...
+      ```
+
+1. Later NHTSA API calls require a vehicle type (e.g., passenger car, truck, etc.). NHTSA can give us a list of all of the vehicle types a particular make includes. We assume that most people will be interested in passenger cars, so if the make includes passenger cars, we pre-select that option.
+    - https://vpic.nhtsa.dot.gov/api/vehicles/GetVehicleTypesForMake/{make}?format=csv
+
+      ```
+      makeid,makename,vehicletypeid,vehicletypename
+      482,VOLKSWAGEN,2,Passenger Car
+      482,VOLKSWAGEN,3,"Truck "
+      482,VOLKSWAGEN,7,Multipurpose Passenger Vehicle (MPV)
+      482,VOLKSWAGEN,10,Incomplete Vehicle
+      ```
+
+1. We can get all of the possible vehicle models given a make, vehicle type, and year. We haven't discussed model year yet. That is selected from a dropdown, with options ranging from 1995 to 2023.
     - https://vpic.nhtsa.dot.gov/api/vehicles/GetModelsForMakeYear/make/{make}/modelyear/{year}/vehicletype/{type}
-    - We haven't discussed model year yet. That is selected from a dropdown, with options ranging from 1995 to 2023.
+
+      ```
+      make_id,make_name,model_id,model_name,vehicletypeid,vehicletypename
+      482,VOLKSWAGEN,3133,Golf,2,Passenger Car
+      482,VOLKSWAGEN,3134,Passat,2,Passenger Car
+      482,VOLKSWAGEN,3137,Jetta,2,Passenger Car
+      482,VOLKSWAGEN,5059,Golf SportWagen,2,Passenger Car
+      482,VOLKSWAGEN,8118,e-Golf,2,Passenger Car
+      482,VOLKSWAGEN,8119,Beetle,2,Passenger Car
+      482,VOLKSWAGEN,13670,Golf GTI,2,Passenger Car
+      482,VOLKSWAGEN,13844,Golf R,2,Passenger Car
+      482,VOLKSWAGEN,24230,Golf Alltrack,2,Passenger Car
+      482,VOLKSWAGEN,25871,Arteon,2,Passenger Car
+      ```
+
 1. A vehicle model might have multiple variants. For example, some vehicles might offer an all-wheel-drive and a front-wheel-drive variant. These variants have potentially different safety information, so we need to let a user choose which variant they are interested in. We can get a list of these variants (and their corresponding IDs) with an NHTSA API call.
     - https://api.nhtsa.gov/SafetyRatings/modelyear/{year}/make/{make}/model/{model}
+
+      ```json
+      {
+        "Count": 1,
+        "Message": "Results returned successfully",
+        "Results": [
+          {
+            "VehicleDescription": "2019 Volkswagen Golf 4 DR FWD",
+            "VehicleId": 13679
+          }
+        ]
+      }
+      ```
+
 1. Each vehicle model variant has an associated ID. We get the ID from the previous step. Given this ID, we can retrieve the corresponding safety data.
     - https://api.nhtsa.gov/SafetyRatings/VehicleId/{ID}
     - For example, the following URL returns the safety information for the 2019 Volkswagen Golf: https://api.nhtsa.gov/SafetyRatings/VehicleId/13679
