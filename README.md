@@ -5,7 +5,7 @@ https://kaczmarj.shinyapps.io/car-safety/
 An R Shiny app that displays safety information about cars. Data provided by
 NHTSA.gov.
 
-![Screenshot of web app](screenshot.jpg)
+![Screenshot of web app](screenshot.jpg?raw=true)
 
 # Install
 
@@ -56,7 +56,7 @@ The bulk of this app involves getting the unique ID of the vehicle a user is int
       ```
 
 1. We can get all of the possible vehicle models given a make, vehicle type, and year. We haven't discussed model year yet. That is selected from a dropdown, with options ranging from 1995 to 2023.
-    - https://vpic.nhtsa.dot.gov/api/vehicles/GetModelsForMakeYear/make/{make}/modelyear/{year}/vehicletype/{type}
+    - https://vpic.nhtsa.dot.gov/api/vehicles/GetModelsForMakeYear/make/{make}/modelyear/{year}/vehicletype/{type}?format=csv
 
       ```
       make_id,make_name,model_id,model_name,vehicletypeid,vehicletypename
