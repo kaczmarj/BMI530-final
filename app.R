@@ -1,9 +1,30 @@
 # Shiny app that displays safety information about cars.
 # Uses the API from the National Highway Traffic Safety Administration (NHTSA).
 
-library(curl) # for downloading things in jsonlite::fromJSON
+library(curl)
 library(jsonlite)
 library(shiny)
+
+# Read data from a URL and return NULL on error.
+# https://stackoverflow.com/a/12195574/5666087
+readURL <- function(url) {
+  con <- curl::curl(url)
+  out <- tryCatch(
+    expr = {
+      readLines(con = con, warn = FALSE)
+    },
+    error = function(cond) {
+      message(paste("Error getting", url))
+      message("Here's the original error message:")
+      message(cond)
+      return(NULL)
+    },
+    finally = {
+      close(con)
+    }
+  )
+  return(out)
+}
 
 # Define UI ----
 ui <- {
@@ -92,8 +113,15 @@ ui <- {
 # Get vehicle makes ----
 # Column names are make_id and make_name.
 # TODO: can we run this outside of server and client?
-vehicleMakes <-
-  read.csv("https://vpic.nhtsa.dot.gov/api/vehicles/GetAllMakes?format=csv")
+vehicleMakes <- {
+  res <-
+    readURL("https://vpic.nhtsa.dot.gov/api/vehicles/GetAllMakes?format=csv")
+  if (is.null(res)) {
+    NULL
+  } else {
+    read.csv(text = res)
+  }
+}
 
 # We make these objects global for easier debugging.
 vehicleModels <- NULL
@@ -126,11 +154,18 @@ server <- function(input, output, session) {
             make
           )
         url <- URLencode(url)
-        # TODO: add try-catch here to account for possible errors in request.
-        read.csv(url)
+        res <- readURL(url)
+        if (is.null(res)) {
+          NULL
+        } else {
+          read.csv(text = res)
+        }
+      }
+      if (is.null(vehicleTypes)) {
+        return(NULL)
       }
       vehicleTypeChoices <-
-        sort(trimws(vehicleTypes$vehicletypename))
+        sort(unique(trimws(vehicleTypes$vehicletypename)))
       selected <-
         if ("Passenger Car" %in% vehicleTypeChoices) {
           "Passenger Car"
@@ -166,8 +201,15 @@ server <- function(input, output, session) {
             type
           )
         url <- URLencode(url)
-        # TODO: add try-catch here to account for possible errors in request.
-        read.csv(url)
+        res <- readURL(url)
+        if (is.null(res)) {
+          NULL
+        } else {
+          read.csv(text = res)
+        }
+      }
+      if (is.null(vehicleModels)) {
+        return(NULL)
       }
       updateSelectizeInput(
         session = session,
@@ -217,8 +259,11 @@ server <- function(input, output, session) {
       output$vehicleImage <- renderText("Photo unavailable")
 
       # TODO: should we reset the tables here too?
-
-      vehicleDescriptionsAndIDs <<- jsonlite::fromJSON(url)$Results
+      res <- readURL(url)
+      if (is.null(res)) {
+        return(NULL)
+      }
+      vehicleDescriptionsAndIDs <<- jsonlite::fromJSON(res)$Results
       if (!is.null(vehicleDescriptionsAndIDs) &&
         length(vehicleDescriptionsAndIDs) == 0) {
         # what do?
@@ -253,7 +298,11 @@ server <- function(input, output, session) {
     url <- URLencode(url)
     # For debugging: https://api.nhtsa.gov/SafetyRatings/VehicleId/13679
     # url above is for 2019 golf
-    vehicleSafety <<- jsonlite::fromJSON(url)$Results
+    res <- readURL(url)
+    if (is.null(res)) {
+      return(NULL)
+    }
+    vehicleSafety <<- jsonlite::fromJSON(res)$Results
 
     crashNames <- c(
       "OverallRating",
